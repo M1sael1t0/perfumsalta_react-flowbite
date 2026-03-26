@@ -1,110 +1,82 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import './App.css';
+import React, { useState } from 'react';
+import './index.css';
 
-// Componentes
-import Header from './components/Header';
-import Hero from './components/Hero';
-import ProductList from './components/ProductList';
-import Categories from './components/Categories';   // <-- NUEVO
-import ContactForm from './components/ContactForm';
+// Layout
+import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartModal from './components/CartModal';
-import SearchBar from './components/SearchBar';
+import LoginModal from './components/LoginModal';
 
-// Datos
-import { productosHombres, productosMujeres } from './data/productos';
+// Páginas
+import Home from './pages/Home';
+import Productos from './pages/Productos';
+import Categorias from './pages/Categorias';
+import Nosotros from './pages/Nosotros';
+import Newsletter from './pages/Newsletter';
 
 function App() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoriaFilter, setCategoriaFilter] = useState("todos");
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState('inicio'); // Estado de navegación
 
-  // --- CARRITO ---
+  // Lógica del Carrito
   const addToCart = (product) => {
-    setCart(prevCart => {
-      const itemExists = prevCart.find(item => item.id === product.id);
-      if (itemExists) {
-        return prevCart.map(item =>
-          item.id === product.id ? { ...item, cantidad: item.cantidad + 1 } : item
-        );
+    setCart(prev => {
+      const exists = prev.find(i => i.id === product.id);
+      if (exists) {
+        return prev.map(i => i.id === product.id ? { ...i, cantidad: i.cantidad + 1 } : i);
       }
-      return [...prevCart, { ...product, cantidad: 1 }];
+      return [...prev, { ...product, cantidad: 1 }];
     });
     setIsCartOpen(true);
   };
 
-  const removeFromCart = (id) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== id));
-  };
+  const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id));
 
   const updateQuantity = (id, amount) => {
-    setCart(prevCart => prevCart.map(item => {
-      if (item.id === id) {
-        const newQuantity = Math.max(1, item.cantidad + amount);
-        return { ...item, cantidad: newQuantity };
-      }
-      return item;
+    setCart(prev => prev.map(i => {
+      if (i.id === id) return { ...i, cantidad: Math.max(1, i.cantidad + amount) };
+      return i;
     }));
   };
 
-  const total = cart.reduce((acc, item) => {
-    const precioNumerico = parseFloat(item.precio.replace(/[^0-9.-]+/g, ""));
-    return acc + (precioNumerico * item.cantidad);
-  }, 0);
+  const total = cart.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+  const contadorCarrito = cart.reduce((acc, item) => acc + item.cantidad, 0);
 
-  // --- FILTRADO ---
-  const allProducts = useMemo(() => {
-    const hombres = productosHombres.map(p => ({ ...p, genero: 'hombres' }));
-    const mujeres = productosMujeres.map(p => ({ ...p, genero: 'mujeres' }));
-    return [...hombres, ...mujeres];
-  }, []);
-
-  const filteredProducts = allProducts.filter(product => {
-    const matchesSearch = product.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoriaFilter === "todos" || product.genero === categoriaFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // Sistema de navegación nativo
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'inicio':
+        return <Home agregarAlCarrito={addToCart} setCurrentPage={setCurrentPage} />;
+      case 'productos':
+        return <Productos agregarAlCarrito={addToCart} />;
+      case 'categorias':
+        return <Categorias agregarAlCarrito={addToCart} />;
+      case 'nosotros':
+        return <Nosotros />;
+      case 'newsletter':
+        return <Newsletter />;
+      default:
+        return <Home agregarAlCarrito={addToCart} setCurrentPage={setCurrentPage} />;
+    }
+  };
 
   return (
-    <div className="App">
-      <Header
-        contadorCarrito={cart.reduce((acc, item) => acc + item.cantidad, 0)}
+    <div className="min-h-screen bg-black flex flex-col">
+      <Navbar
+        contadorCarrito={contadorCarrito}
         openCart={() => setIsCartOpen(true)}
+        openLogin={() => setIsLoginOpen(true)}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
       />
 
-      <main>
-        <Hero />
-
-        {/* Productos destacados (sin filtro activo) */}
-        <ProductList
-          titulo="Productos Destacados"
-          idSeccion="catalogo"
-          productos={filteredProducts}
-          agregarAlCarrito={addToCart}
-        />
-
-        {/* Categorías */}
-        <Categories />
-
-        {/* Buscador */}
-        <section className="container-search">
-          <SearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            categoria={categoriaFilter}
-            setCategoria={setCategoriaFilter}
-          />
-        </section>
-
-        {/* Beneficios + Sobre Nosotros */}
-        {/* Features está compuesto: franja beneficios + sección sobre nosotros */}
-        {/* Si lo querés separado podés importar Features también */}
-
-        <ContactForm />
+      <main className="flex-1">
+        {renderPage()}
       </main>
 
-      <Footer />
+      <Footer setCurrentPage={setCurrentPage} />
 
       <CartModal
         cart={cart}
@@ -113,6 +85,11 @@ function App() {
         updateQuantity={updateQuantity}
         removeFromCart={removeFromCart}
         total={total}
+      />
+
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
       />
     </div>
   );
